@@ -1,0 +1,9 @@
+[package]
+name = "rp2040-i2s"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pio = "0.2"
+pio-proc = "0.2"
+rp2040-hal = "0.9"
