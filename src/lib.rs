@@ -1,5 +1,6 @@
 #![no_std]
 
+use fugit::HertzU32;
 use rp2040_hal::{
     gpio::{FunctionNull, Pin, PinId, PullDown, ValidFunction},
     pio::{
@@ -8,9 +9,33 @@ use rp2040_hal::{
     },
 };
 
+// Based on a 48kHz sample rate
+// TODO(bschwind) - Support other sample rates. It's basically
+// sample_rate * 2 (stereo) * 2 (2 clock cycles per bit output) * 32 (32 bits per sample)
+const PIO_CLOCK_HZ: u32 = 6_144_000;
+
 #[derive(Debug)]
 pub enum I2SError {
     PioInstallationError(InstallError),
+}
+
+pub enum PioClockDivider {
+    Exact { integer: u16, fraction: u8 },
+    FromSystemClock(HertzU32),
+}
+
+impl PioClockDivider {
+    fn pio_divider(&self) -> (u16, u8) {
+        match self {
+            Self::Exact { integer, fraction } => (*integer, *fraction),
+            Self::FromSystemClock(system_clock_hz) => {
+                let hertz = system_clock_hz.to_Hz();
+                let (fraction, integer) = libm::modf(hertz as f64 / PIO_CLOCK_HZ as f64);
+
+                (integer as u16, (fraction * 256.0) as u8)
+            },
+        }
+    }
 }
 
 pub trait SampleReader {
@@ -35,6 +60,7 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SOutput<P, SM> {
     /// the bit clock pin is 7, the word clock pin MUST be 8.
     pub fn new<DataPin, BitClockPin, LeftRightClockPin>(
         pio: &mut PIO<P>,
+        clock_divider: PioClockDivider,
         state_machine: UninitStateMachine<(P, SM)>,
         data_out_pin: Pin<DataPin, FunctionNull, PullDown>,
         bit_clock_pin: Pin<BitClockPin, FunctionNull, PullDown>,
@@ -77,11 +103,13 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SOutput<P, SM> {
         let installed =
             pio.install(&dac_pio_program.program).map_err(I2SError::PioInstallationError)?;
 
+        let (divider_int, divider_fraction) = clock_divider.pio_divider();
+
         let (mut dac_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
             .out_pins(data_pin_id, 1)
             .side_set_pin_base(bit_clock_pin_id)
             .out_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(10, 0)
+            .clock_divisor_fixed_point(divider_int, divider_fraction)
             .buffers(rp2040_hal::pio::Buffers::OnlyTx)
             .autopull(true)
             .pull_threshold(32)
@@ -114,6 +142,7 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
     /// the bit clock pin is 7, the word clock pin MUST be 8.
     pub fn new<DataPin, BitClockPin, LeftRightClockPin>(
         pio: &mut PIO<P>,
+        clock_divider: PioClockDivider,
         state_machine: UninitStateMachine<(P, SM)>,
         data_in_pin: Pin<DataPin, FunctionNull, PullDown>,
         bit_clock_pin: Pin<BitClockPin, FunctionNull, PullDown>,
@@ -155,11 +184,13 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
 
         let installed = pio.install(&mic_pio_program.program).unwrap();
 
+        let (divider_int, divider_fraction) = clock_divider.pio_divider();
+
         let (mut mic_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
             .in_pin_base(data_pin_id)
             .side_set_pin_base(bit_clock_pin_id)
             .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(10, 0)
+            .clock_divisor_fixed_point(divider_int, divider_fraction)
             .buffers(rp2040_hal::pio::Buffers::OnlyRx)
             .autopush(true)
             .push_threshold(32)
@@ -182,6 +213,7 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
     /// of instructions.
     pub fn new_data_only<DataPin>(
         pio: &mut PIO<P>,
+        clock_divider: PioClockDivider,
         state_machine: UninitStateMachine<(P, SM)>,
         data_in_pin: Pin<DataPin, FunctionNull, PullDown>,
     ) -> Result<Self, I2SError>
@@ -207,10 +239,12 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
 
         let installed = pio.install(&mic_pio_program.program).unwrap();
 
+        let (divider_int, divider_fraction) = clock_divider.pio_divider();
+
         let (mut mic_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
             .in_pin_base(data_pin_id)
             .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(10, 0)
+            .clock_divisor_fixed_point(divider_int, divider_fraction)
             .buffers(rp2040_hal::pio::Buffers::OnlyRx)
             .autopush(true)
             .push_threshold(32)
