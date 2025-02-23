@@ -1,7 +1,13 @@
 [package]
 name = "rp2040-i2s"
+description = "Read and write to I2S devices like MEMS microphones or DACs, on the RP2040 microcontroller."
 version = "0.1.0"
+authors = ["Brian Schwind <brianmschwind@gmail.com>"]
 edition = "2021"
+repository = "https://github.com/bschwind/rp2040-i2s"
+license = "MIT OR Apache-2.0 OR Zlib"
+keywords = ["I2S", "RP2040", "PIO"]
+categories = ["multimedia::audio"]
 
 [dependencies]
 fugit = "0.3"
