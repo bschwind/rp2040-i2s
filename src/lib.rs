@@ -105,15 +105,16 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SOutput<P, SM> {
 
         let (divider_int, divider_fraction) = clock_divider.pio_divider();
 
-        let (mut dac_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
-            .out_pins(data_pin_id, 1)
-            .side_set_pin_base(bit_clock_pin_id)
-            .out_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(divider_int, divider_fraction)
-            .buffers(rp2040_hal::pio::Buffers::OnlyTx)
-            .autopull(true)
-            .pull_threshold(32)
-            .build(state_machine);
+        let (mut dac_sm, fifo_rx, fifo_tx) =
+            rp2040_hal::pio::PIOBuilder::from_installed_program(installed)
+                .out_pins(data_pin_id, 1)
+                .side_set_pin_base(bit_clock_pin_id)
+                .out_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
+                .clock_divisor_fixed_point(divider_int, divider_fraction)
+                .buffers(rp2040_hal::pio::Buffers::OnlyTx)
+                .autopull(true)
+                .pull_threshold(32)
+                .build(state_machine);
 
         dac_sm.set_pindirs([
             (data_pin_id, rp2040_hal::pio::PinDir::Output),
@@ -186,15 +187,16 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
 
         let (divider_int, divider_fraction) = clock_divider.pio_divider();
 
-        let (mut mic_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
-            .in_pin_base(data_pin_id)
-            .side_set_pin_base(bit_clock_pin_id)
-            .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(divider_int, divider_fraction)
-            .buffers(rp2040_hal::pio::Buffers::OnlyRx)
-            .autopush(true)
-            .push_threshold(32)
-            .build(state_machine);
+        let (mut mic_sm, fifo_rx, fifo_tx) =
+            rp2040_hal::pio::PIOBuilder::from_installed_program(installed)
+                .in_pin_base(data_pin_id)
+                .side_set_pin_base(bit_clock_pin_id)
+                .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
+                .clock_divisor_fixed_point(divider_int, divider_fraction)
+                .buffers(rp2040_hal::pio::Buffers::OnlyRx)
+                .autopush(true)
+                .push_threshold(32)
+                .build(state_machine);
 
         mic_sm.set_pindirs([
             (data_pin_id, rp2040_hal::pio::PinDir::Input),
@@ -241,14 +243,15 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
 
         let (divider_int, divider_fraction) = clock_divider.pio_divider();
 
-        let (mut mic_sm, fifo_rx, fifo_tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
-            .in_pin_base(data_pin_id)
-            .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
-            .clock_divisor_fixed_point(divider_int, divider_fraction)
-            .buffers(rp2040_hal::pio::Buffers::OnlyRx)
-            .autopush(true)
-            .push_threshold(32)
-            .build(state_machine);
+        let (mut mic_sm, fifo_rx, fifo_tx) =
+            rp2040_hal::pio::PIOBuilder::from_installed_program(installed)
+                .in_pin_base(data_pin_id)
+                .in_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
+                .clock_divisor_fixed_point(divider_int, divider_fraction)
+                .buffers(rp2040_hal::pio::Buffers::OnlyRx)
+                .autopush(true)
+                .push_threshold(32)
+                .build(state_machine);
 
         mic_sm.set_pindirs([(data_pin_id, rp2040_hal::pio::PinDir::Input)]);
 
