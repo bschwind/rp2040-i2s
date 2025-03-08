@@ -2,12 +2,6 @@
 
 Read and write to I2S devices like MEMS microphones or DACs, on the RP2040 microcontroller.
 
-This crate currently assumes a fixed system clock at exactly 61440000 Hz, and uses a clock
-divider of exactly 10 to hit the required PIO clock to read and output 48 kHz audio. This
-assumption can be changed fairly easily by adding some flexibility in the code to accept
-a different PIO clock divider. Note: inexact (fractional) divisions of the system clock can
-lead to clock jitter, which may or may not effect the performance of your audio application.
-
 ## Usage
 
 ### I2S Output
