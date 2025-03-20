@@ -171,16 +171,26 @@ impl<P: PIOExt, SM: StateMachineIndex> I2SInput<P, SM> {
         #[rustfmt::skip]
         let mic_pio_program = pio_proc::pio_asm!(
             ".side_set 2",
-            "    set x, 30          side 0b00", // side 0bWB - W = Word Clock, B = Bit Clock
+            "    nop                side 0b10", // side 0bWB - W = Word Clock, B = Bit Clock
+            "    nop                side 0b11",
+            "    nop                side 0b00",
+            "    nop                side 0b01",
+            ".wrap_target",
+            "    set x, 29          side 0b00",
             "left_data:",
             "    in pins, 1         side 0b01",
             "    jmp x-- left_data  side 0b00",
-            "    in pins, 1         side 0b11",
-            "    set x, 30          side 0b10",
+            "    in pins, 1         side 0b01", // We have read 30 bits after the loop, read 31st here
+            "    nop                side 0b10",
+            "    in pins, 1         side 0b11", // Read the 32nd bit here
+            "    set x, 29          side 0b10",
             "right_data:",
             "    in pins, 1         side 0b11",
             "    jmp x-- right_data side 0b10",
-            "    in pins, 1         side 0b01",
+            "    in pins, 1         side 0b11", // We have read 30 bits after the loop, read 31st here
+            "    nop                side 0b00",
+            "    in pins, 1         side 0b01", // Read the 32nd bit here
+            ".wrap",
         );
 
         let installed = pio.install(&mic_pio_program.program).unwrap();
